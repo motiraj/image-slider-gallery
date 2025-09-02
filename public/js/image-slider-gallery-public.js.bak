@@ -1,0 +1,830 @@
+(function($) {
+    'use strict';
+
+    // Default slider configuration
+    const defaultConfig = {
+        slidesToShow: 1,
+        slidesToScroll: 1,
+        infinite: true,
+        speed: 500,
+        autoplay: false, // Will be overridden by sliderConfig
+        autoplaySpeed: 3000, // Will be overridden by sliderConfig
+        arrows: true,
+        dots: true,
+        fade: false,
+        cssEase: 'ease',
+        adaptiveHeight: true,
+        prevArrow: '<button type="button" class="slick-prev">Previous</button>',
+        nextArrow: '<button type="button" class="slick-next">Next</button>',
+        responsive: [
+            {
+                breakpoint: 768,
+                settings: {
+                    arrows: false,
+                    dots: true
+                }
+            }
+        ]
+    };
+
+    // Effect configurations
+    const effectConfigs = {
+        // Fade / Dissolve
+        'fade': {
+            fade: true,
+            speed: 1000,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)'
+        },
+        // Slide (Horizontal)
+        'slide': {
+            fade: false,
+            speed: 600,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)'
+        },
+        // Slide Vertical
+        'slide-vertical': {
+            fade: false,
+            vertical: true,
+            verticalSwiping: true,
+            speed: 600,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)'
+        },
+        // Zoom / Ken Burns
+        'zoom': {
+            fade: true,
+            speed: 1500,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            onInit: function(slick) {
+                $(slick.$slides).addClass('zoom-effect');
+            },
+            beforeChange: function(event, slick, currentSlide, nextSlide) {
+                $(slick.$slides).removeClass('zoom-active');
+                $(slick.$slides[nextSlide]).addClass('zoom-active');
+            },
+            afterChange: function(slick, currentSlide) {
+                $(slick.$slides).removeClass('zoom-active');
+                $(slick.$slides[currentSlide]).addClass('zoom-active');
+            }
+        },
+        // 3D Cube
+        'cube': {
+            slidesToShow: 1,
+            slidesToScroll: 1,
+            speed: 1000,
+            cssEase: 'cubic-bezier(0.23, 1, 0.32, 1)',
+            transform: 'translate3d(0, 0, 0)',
+            perspective: 1000,
+            onInit: function(slick) {
+                $(slick.$slider).addClass('cube-effect');
+            },
+            beforeChange: function() {},
+            afterChange: function() {}
+        },
+        // Flip / Card
+        'flip': {
+            speed: 800,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            onInit: function(slick) {
+                $(slick.$slider).addClass('flip-effect');
+            },
+            beforeChange: function(event, slick, currentSlide, nextSlide) {
+                $(slick.$slides).removeClass('flip-active');
+                $(slick.$slides[nextSlide]).addClass('flip-active');
+            }
+        },
+        // Coverflow
+        'coverflow': {
+            slidesToShow: 3,
+            centerMode: true,
+            centerPadding: '0',
+            speed: 600,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            arrows: true,
+            dots: true,
+            infinite: true,
+            focusOnSelect: true,
+            variableWidth: false,
+            edgeFriction: 0.2,
+            initialSlide: 1,
+            slidesToScroll: 1,
+            touchThreshold: 10,
+            swipeToSlide: true,
+            onInit: function(slick) {
+                const $slider = $(slick.$slider);
+                $slider.addClass('effect-coverflow');
+                
+                // Force hardware acceleration and 3D perspective
+                $slider.css({
+                    'perspective': '1200px',
+                    'transform-style': 'preserve-3d',
+                    'overflow': 'visible',
+                    '-webkit-transform-style': 'preserve-3d',
+                    '-webkit-backface-visibility': 'hidden',
+                    '-webkit-perspective': '1200px'
+                });
+                
+                // Initialize slides with 3D transforms
+                $(slick.$slides).each(function() {
+                    const $slide = $(this);
+                    $slide.css({
+                        'transform-style': 'preserve-3d',
+                        'backface-visibility': 'hidden',
+                        'transform-origin': 'center center',
+                        'transition': 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                        'position': 'relative',
+                        'box-shadow': '0 10px 25px rgba(0,0,0,0.2)',
+                        'z-index': 1,
+                        'outline': 'none'
+                    });
+                });
+                
+                // Set initial state
+                updateCoverflowSlides(slick);
+                
+                // Force reflow and redraw for better 3D rendering
+                setTimeout(() => {
+                    const $track = $slider.find('.slick-track');
+                    $track.css('transform', 'translate3d(0,0,0)');
+                    $track[0].offsetHeight; // Force reflow
+                    $slider.addClass('slick-initialized');
+                }, 50);
+            },
+            beforeChange: function(event, slick, currentSlide, nextSlide) {
+                // Reset all slides
+                $(slick.$slides).removeClass('slick-center');
+                
+                // Set new center slide
+                $(slick.$slides[nextSlide]).addClass('slick-center');
+                
+                // Update positions
+                updateCoverflowSlides(slick);
+            }
+        },
+        // Parallax
+        'parallax': {
+            speed: 1000,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            onInit: function(slick) {
+                $(slick.$slider).addClass('parallax-effect');
+            }
+        },
+        // Slice / Strip
+        'slice': {
+            speed: 1000,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            onInit: function(slick) {
+                $(slick.$slider).addClass('slice-effect');
+            }
+        },
+        // Bounce / Elastic
+        'bounce': {
+            speed: 1000,
+            cssEase: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            onInit: function(slick) {
+                $(slick.$slider).addClass('bounce-effect');
+            },
+            beforeChange: function() {},
+            afterChange: function() {}
+        }
+    };
+
+    // Check if Slick is loaded
+    function isSlickLoaded() {
+        return typeof $.fn.slick !== 'undefined';
+    }
+    
+    // Calculate and set slider dimensions based on container width and aspect ratio
+    function setSliderDimensions($slider, dimensions) {
+        if (!$slider.length || !dimensions) return;
+        
+        const containerWidth = $slider.width();
+        let aspectRatio = dimensions.height / dimensions.width;
+        
+        // Adjust aspect ratio for mobile devices to be more portrait-friendly
+        if (window.innerWidth <= 768) {
+            aspectRatio = Math.min(aspectRatio * 0.85, 1.5);
+        }
+        
+        let newHeight = containerWidth * aspectRatio;
+        
+        // Apply viewport-based height constraints
+        const maxViewportHeight = window.innerHeight * 0.85;
+        newHeight = Math.min(newHeight, maxViewportHeight);
+        
+        // Ensure minimum and maximum heights
+        newHeight = Math.max(newHeight, 200);
+        newHeight = Math.min(newHeight, 1200);
+        
+        // Apply the calculated height with smooth transition
+        $slider.css({
+            'height': newHeight + 'px',
+            'transition': 'height 0.3s ease-in-out'
+        });
+        
+        // Update slide heights for consistency
+        $slider.find('.slick-slide').css('height', newHeight + 'px');
+            
+            // Force hardware acceleration
+            $slider.css({
+                'perspective': '1000px',
+                'transform-style': 'preserve-3d',
+                'overflow': 'visible',
+                '-webkit-transform-style': 'preserve-3d',
+                '-webkit-backface-visibility': 'hidden',
+                '-webkit-perspective': '1000px'
+            });
+            
+            // Initialize slides with 3D transforms
+            $(slick.$slides).each(function(index) {
+                const $slide = $(this);
+                $slide.css({
+                    'transform-style': 'preserve-3d',
+                    'backface-visibility': 'hidden',
+                    'transform-origin': 'center center',
+                    'transition': 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                    'position': 'relative',
+                    'box-shadow': '0 10px 25px rgba(0,0,0,0.2)',
+                    'z-index': 1,
+                    'outline': 'none'
+                });
+            });
+            
+            // Set initial state
+            updateCoverflowSlides(slick);
+            
+            // Force reflow and redraw
+            setTimeout(() => {
+                const $track = $slider.find('.slick-track');
+                $track.css('transform', 'translate3d(0,0,0)');
+                $track[0].offsetHeight; // Force reflow
+                $slider.addClass('slick-initialized');
+            }, 50);
+        },
+        beforeChange: function(event, slick, currentSlide, nextSlide) {
+            // Reset all slides
+            $(slick.$slides).removeClass('slick-center');
+            
+            // Set new center slide
+            $(slick.$slides[nextSlide]).addClass('slick-center');
+            
+            // Update positions
+            updateCoverflowSlides(slick);
+        }
+    },
+    // Parallax
+    'parallax': {
+        speed: 1000,
+        cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        onInit: function(slick) {
+            $(slick.$slider).addClass('parallax-effect');
+        }
+    },
+    // Slice / Strip
+    'slice': {
+        speed: 1000,
+        cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+        onInit: function(slick) {
+            $(slick.$slider).addClass('slice-effect');
+        }
+    },
+    // Bounce / Elastic
+    'bounce': {
+        speed: 1000,
+        cssEase: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+        onInit: function(slick) {
+            $(slick.$slider).addClass('bounce-effect');
+        },
+        beforeChange: function() {},
+        afterChange: function() {}
+    }
+};
+
+    // Check if Slick is loaded
+    function isSlickLoaded() {
+        return typeof $.fn.slick !== 'undefined';
+    }
+    
+    // Calculate and set slider dimensions based on container width and aspect ratio
+    function setSliderDimensions($slider, dimensions) {
+        if (!$slider.length || !dimensions) return;
+        
+        const containerWidth = $slider.width();
+        let aspectRatio = dimensions.height / dimensions.width;
+        
+        // Adjust aspect ratio for mobile devices to be more portrait-friendly
+        if (window.innerWidth <= 768) {
+            aspectRatio = Math.min(aspectRatio * 0.85, 1.5);
+        }
+        
+        let newHeight = containerWidth * aspectRatio;
+        
+        // Apply viewport-based height constraints
+        const maxViewportHeight = window.innerHeight * 0.85;
+        newHeight = Math.min(newHeight, maxViewportHeight);
+        
+        // Ensure minimum and maximum heights
+        newHeight = Math.max(newHeight, 200);
+        newHeight = Math.min(newHeight, 1200);
+        
+        // Apply the calculated height with smooth transition
+        $slider.css({
+            'height': newHeight + 'px',
+            'transition': 'height 0.3s ease-in-out'
+        });
+        
+        // Update slide heights for consistency
+        $slider.find('.slick-slide').css('height', newHeight + 'px');
+    
+    return newHeight;
+}
+
+// Update coverflow slides positions
+function updateCoverflowSlides(slick) {
+    if (!slick || !slick.$slides) return;
+    
+    const $slides = $(slick.$slides);
+    const currentSlide = slick.currentSlide || 0;
+    const totalSlides = $slides.length;
+    const maxRotation = 40; // degrees
+    const maxOffset = 120; // pixels
+    const scale = 0.9; // scale of side slides
+    
+    $slides.each(function(index) {
+        const $slide = $(this);
+        let distanceFromCenter = Math.abs(index - currentSlide);
+        const direction = index < currentSlide ? -1 : 1;
+        
+        // Handle infinite looping
+        if (slick.options.infinite) {
+            distanceFromCenter = Math.min(distanceFromCenter, totalSlides - distanceFromCenter);
+        }
+        
+        // Calculate rotation and position based on distance from center
+        let rotation = 0;
+        let offsetX = 0;
+        let offsetZ = 0;
+        let zIndex = 1;
+        let opacity = 0.6;
+        let slideScale = scale;
+        
+        if (index === currentSlide) {
+            // Center slide
+            rotation = 0;
+            offsetX = 0;
+            offsetZ = 20;
+            zIndex = 10;
+            opacity = 1;
+            slideScale = 1;
+        } else if (distanceFromCenter === 1) {
+            // Adjacent slides
+            rotation = maxRotation * direction * 0.7;
+            offsetX = maxOffset * direction * 0.8;
+            offsetZ = -Math.abs(offsetX) * 0.3;
+            zIndex = 5;
+            opacity = 0.8;
+            slideScale = 0.9;
+        } else if (distanceFromCenter === 2) {
+            // Next level out
+            rotation = maxRotation * direction * 0.9;
+            offsetX = maxOffset * direction * 1.2;
+            offsetZ = -Math.abs(offsetX) * 0.4;
+            zIndex = 3;
+            opacity = 0.5;
+            slideScale = 0.8;
+        } else {
+            // Far slides
+            rotation = maxRotation * direction;
+            offsetX = maxOffset * direction * 1.5;
+            offsetZ = -Math.abs(offsetX) * 0.5;
+            zIndex = 1;
+            opacity = 0.3;
+            slideScale = 0.7;
+        }
+        
+        // Apply transformations with 3D perspective
+        const transform = `translate3d(${offsetX}px, 0, ${offsetZ}px) rotateY(${rotation}deg) scale(${slideScale})`;
+        
+        $slide.css({
+            'transform': transform,
+            '-webkit-transform': transform, // Safari/WebKit
+            'z-index': zIndex,
+            'opacity': opacity,
+            'transform-style': 'preserve-3d',
+            '-webkit-transform-style': 'preserve-3d',
+            'transition': 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+            'backface-visibility': 'hidden',
+            '-webkit-backface-visibility': 'hidden',
+            'will-change': 'transform, opacity',
+            'pointer-events': 'auto'
+        });
+        
+        // Update image styles
+        const $img = $slide.find('img');
+        if ($img.length) {
+            $img.css({
+                'transform': 'translateZ(0)',
+                '-webkit-transform': 'translateZ(0)',
+                'backface-visibility': 'hidden',
+                '-webkit-backface-visibility': 'hidden',
+                'transform-style': 'preserve-3d',
+                '-webkit-transform-style': 'preserve-3d',
+                'box-shadow': index === currentSlide ? '0 15px 30px rgba(0,0,0,0.25)' : 'none'
+            });
+        }
+    });
+}
+        if (!effect || !effectConfigs[effect]) {
+            console.warn('Effect not found or invalid:', effect);
+            return;
+        }
+
+        const config = effectConfigs[effect];
+        
+        // Apply any effect-specific initialization
+        switch(effect) {
+            case 'parallax':
+                // Initialize parallax effect with layers
+                $slider.find('.slick-slide').each(function() {
+                    const $slide = $(this);
+                    const $image = $slide.find('.slider-image');
+                    const imageSrc = $image.attr('src');
+                    const $container = $image.parent();
+                    
+                    // Create parallax container if it doesn't exist
+                    let $parallaxContainer = $container.find('.parallax-container');
+                    if ($parallaxContainer.length === 0) {
+                        $parallaxContainer = $('<div class="parallax-container"></div>');
+                        $container.prepend($parallaxContainer);
+                    } else {
+                        $parallaxContainer.empty();
+                    }
+                    
+                    // Create 3 layers with different depth effects
+                    const layers = [
+                        { depth: 0.5, scale: 1.05 }, // Background layer (moves slower)
+                        { depth: 0.8, scale: 1.02 }, // Middle layer
+                        { depth: 1.2, scale: 1.0 }   // Foreground layer (moves faster)
+                    ];
+                    
+                    // Create layers
+                    layers.forEach((layer, index) => {
+                        const $layer = $('<div class="parallax-layer"></div>');
+                        $layer.css({
+                            'background-image': `url(${imageSrc})`,
+                            'transform': `translateZ(${layer.depth}px) scale(${layer.scale})`,
+                            'z-index': 1 + index,
+                            'opacity': 1 - (index * 0.15) // Slight opacity variation for depth
+                        });
+                        $parallaxContainer.append($layer);
+                    });
+                    
+                    // Hide the original image
+                    $image.hide();
+                });
+                
+                // Handle mouse movement for parallax effect
+                let isHovering = false;
+                let animationFrame;
+                
+                $slider.on('mousemove', function(e) {
+                    if (!isHovering) {
+                        isHovering = true;
+                        animateParallax();
+                    }
+                    
+                    const $this = $(this);
+                    const relX = e.pageX - $this.offset().left;
+                    const relY = e.pageY - $this.offset().top;
+                    const width = $this.width();
+                    const height = $this.height();
+                    
+                    // Calculate movement based on mouse position (normalized to -1 to 1)
+                    const moveX = ((relX / width) - 0.5) * 2;
+                    const moveY = ((relY / height) - 0.5) * 2;
+                    
+                    // Store mouse position for animation frame
+                    $this.data('parallax-pos', { x: moveX, y: moveY });
+                });
+                
+                $slider.on('mouseleave', function() {
+                    isHovering = false;
+                    if (animationFrame) {
+                        cancelAnimationFrame(animationFrame);
+                    }
+                    // Reset position
+                    $(this).find('.parallax-layer').css('transform', function() {
+                        const depth = parseFloat($(this).css('transform').split(',')[14]) || 0;
+                        const scale = depth > 1 ? 1 : 1 + (1 - depth) * 0.05;
+                        return `translate3d(0, 0, ${depth}px) scale(${scale})`;
+                    });
+                });
+                
+                // Smooth animation using requestAnimationFrame
+                function animateParallax() {
+                    if (!isHovering) return;
+                    
+                    $slider.each(function() {
+                        const $this = $(this);
+                        const pos = $this.data('parallax-pos') || { x: 0, y: 0 };
+                        
+                        $this.find('.parallax-layer').each(function() {
+                            const $layer = $(this);
+                            const depth = parseFloat($layer.css('transform').split(',')[14]) || 0;
+                            const moveX = pos.x * (20 * depth);
+                            const moveY = pos.y * (10 * depth);
+                            const scale = depth > 1 ? 1 : 1 + (1 - depth) * 0.05;
+                            
+                            $layer.css('transform', `translate3d(${moveX}px, ${moveY}px, ${depth}px) scale(${scale})`);
+                        });
+                    });
+                    
+                    animationFrame = requestAnimationFrame(animateParallax);
+                }
+                
+                // Initialize first slide
+                $slider.find('.slick-slide:first-child .parallax-layer').css('opacity', '1');
+                break;
+
+            case 'zoom':
+                // Initialize zoom/ken burns effect
+                $slider.find('.slick-slide').each(function() {
+                    if (!$(this).hasClass('slick-active')) {
+                        $(this).find('.slider-image').css('transform', 'scale(1.1)');
+                    }
+                });
+                break;
+
+            case 'cube':
+                // Add 3D perspective
+                $slider.css({
+                    'perspective': '1200px',
+                    'transform-style': 'preserve-3d'
+                });
+                break;
+
+            case 'flip':
+                // Initialize flip effect
+                $slider.find('.slick-slide').css({
+                    'transform-style': 'preserve-3d',
+                    'transition': 'transform 0.8s ease'
+                });
+                break;
+
+            case 'coverflow':
+                // Initialize coverflow effect
+                $slider.find('.slick-slide').css({
+                    'transition': 'all 0.5s ease',
+                    'transform': 'scale(0.8)',
+                    'opacity': '0.5'
+                });
+                $slider.find('.slick-center').css({
+                    'transform': 'scale(1)',
+                    'opacity': '1'
+                });
+                break;
+
+            case 'slice':
+                // Initialize slice effect with dynamic strips
+                $slider.find('.slick-slide').each(function() {
+                    const $slide = $(this);
+                    const $image = $slide.find('.slider-image');
+                    const imageSrc = $image.attr('src');
+                    const $container = $image.parent();
+                    
+                    // Create strip container if it doesn't exist
+                    let $stripContainer = $container.find('.slice-strip-container');
+                    if ($stripContainer.length === 0) {
+                        $stripContainer = $('<div class="slice-strip-container"></div>');
+                        $container.prepend($stripContainer);
+                    } else {
+                        $stripContainer.empty();
+                    }
+                    
+                    // Create 8 strips
+                    const stripCount = 8;
+                    
+                    // Create strips
+                    for (let i = 0; i < stripCount; i++) {
+                        const $strip = $('<div class="slice-strip"></div>');
+                        $strip.css({
+                            'background-image': 'url(' + imageSrc + ')'
+                        });
+                        $stripContainer.append($strip);
+                    }
+                    
+                    // Hide the original image
+                    $image.hide();
+                });
+                
+                // Handle slide changes
+                $slider.on('beforeChange', function(event, slick, currentSlide, nextSlide) {
+                    const $slides = $(slick.$slides);
+                    const $currentSlide = $slides.eq(currentSlide);
+                    const $nextSlide = $slides.eq(nextSlide);
+                    
+                    // Animate out current slide
+                    $currentSlide.find('.slice-strip').css({
+                        'animation': 'stripOut 0.8s cubic-bezier(0.7, 0, 0.3, 1) forwards'
+                    });
+                    
+                    // Animate in next slide with a small delay
+                    setTimeout(() => {
+                        $nextSlide.find('.slice-strip').each(function(index) {
+                            const delay = index * 0.05;
+                            $(this).css({
+                                'animation': 'stripIn 0.8s ' + delay + 's cubic-bezier(0.7, 0, 0.3, 1) forwards'
+                            });
+                        });
+                    }, 50);
+                });
+                
+                // Initialize first slide
+                $slider.find('.slick-slide:first-child .slice-strip').css({
+                    'animation': 'stripIn 0.8s cubic-bezier(0.7, 0, 0.3, 1) forwards'
+                });
+                break;
+
+            case 'bounce':
+                // Initialize bounce effect
+                $slider.find('.slick-slide').css('opacity', '0');
+                break;
+                
+            default:
+                break;
+        }
+    }
+
+    // Initialize all sliders on the page
+    function initializeSliders() {
+        if (!isSlickLoaded()) {
+            console.error('Slick Carousel is not loaded. Make sure the script is properly enqueued.');
+            return false;
+        }
+        
+        // Debug: Log the image_slider_gallery object
+        console.log('image_slider_gallery object:', typeof image_slider_gallery !== 'undefined' ? image_slider_gallery : 'Not defined');
+        
+        // Get default settings from localized data or use fallbacks
+        const defaultSettings = typeof image_slider_gallery !== 'undefined' ? image_slider_gallery : {
+            autoplay: false,
+            autoplay_speed: 3000,
+            effect: 'fade',
+            speed: 500,
+            arrows: true,
+            dots: true
+        };
+        
+        console.log('Using autoplay:', defaultSettings.autoplay);
+        console.log('Autoplay speed:', defaultSettings.autoplay_speed);
+
+        $('.image-slider-gallery').each(function() {
+            const $slider = $(this);
+            
+            // Skip if already initialized or element doesn't exist
+            if (!$slider.length || $slider.hasClass('slick-initialized')) {
+                return;
+            }
+            
+            try {
+                // Get options from data attributes with fallback to defaults and localized settings
+                const sliderData = $slider.data();
+                
+                // Debug: Log the slider data attributes
+                console.log('Slider data attributes:', sliderData);
+                
+                // Get autoplay setting - prioritize data attributes over default settings
+                let autoplay = false;
+                if (sliderData.autoplay !== undefined) {
+                    // Handle both string 'true'/'false' and boolean values
+                    autoplay = sliderData.autoplay === true || 
+                              sliderData.autoplay === 'true' || 
+                              sliderData.autoplay === '1';
+                } else if (defaultSettings.autoplay !== undefined) {
+                    autoplay = defaultSettings.autoplay === true || 
+                              defaultSettings.autoplay === 'yes' || 
+                              defaultSettings.autoplay === '1';
+                }
+                
+                // Get autoplay speed
+                let autoplaySpeed = 3000; // Default fallback
+                if (sliderData.interval !== undefined) {
+                    autoplaySpeed = parseInt(sliderData.interval) || autoplaySpeed;
+                } else if (sliderData.autoplaySpeed !== undefined) {
+                    autoplaySpeed = parseInt(sliderData.autoplaySpeed) || autoplaySpeed;
+                } else if (defaultSettings.autoplay_speed !== undefined) {
+                    autoplaySpeed = parseInt(defaultSettings.autoplay_speed) || autoplaySpeed;
+                }
+                    
+                const effect = sliderData.effect || defaultSettings.effect || 'fade';
+                const speed = sliderData.speed !== undefined 
+                    ? parseInt(sliderData.speed) 
+                    : (defaultSettings.speed || 500);
+                    
+                const arrows = sliderData.arrows !== undefined 
+                    ? (sliderData.arrows === 'true' || sliderData.arrows === true)
+                    : (defaultSettings.arrows !== false);
+                    
+                const dots = sliderData.dots !== undefined 
+                    ? (sliderData.dots === 'true' || sliderData.dots === true)
+                    : (defaultSettings.dots !== false);
+                
+                // Debug log the final settings
+                console.log('Final slider settings:', {
+                    autoplay,
+                    autoplaySpeed,
+                    effect,
+                    speed,
+                    arrows,
+                    dots,
+                    defaultSettings: defaultSettings
+                });
+                
+                // Get effect configuration or fallback to fade
+                const effectConfig = effect in effectConfigs ? effectConfigs[effect] : effectConfigs.fade;
+                
+                // Create final config by combining defaults with effect settings
+                const sliderConfig = {
+                    ...defaultConfig,
+                    autoplay: autoplay,
+                    autoplaySpeed: autoplaySpeed,
+                    arrows: arrows,
+                    dots: dots,
+                    speed: speed,
+                    pauseOnHover: false, // Ensure autoplay continues on hover
+                    pauseOnFocus: false, // Ensure autoplay continues on focus
+                    // Force reinitialize if autoplay setting changes
+                    lazyLoad: 'ondemand',
+                    waitForAnimate: true,
+                    useCSS: true,
+                    useTransform: true,
+                    ...effectConfig,
+                    onInit: function(slick) {
+                        const $slides = $(slick.$slides);
+                        
+                        // Initialize slides
+                        $slides.css({
+                            'opacity': '1',
+                            'visibility': 'visible',
+                            'max-width': '100%',
+                            'width': '100%',
+                            'height': 'auto',
+                            'display': 'block',
+                            'position': 'relative',
+                            'backface-visibility': 'hidden'
+                        });
+                        
+                        // Add effect class to slider
+                        const $slider = $(slick.$slider);
+                        $slider.addClass('effect-' + effect + ' slick-initialized');
+                        
+                        // Set active slide
+                        $slides.removeClass('slick-active');
+                        $(slick.$slides[slick.currentSlide]).addClass('slick-active');
+                        
+                        // Set initial dimensions if available
+                        if (dimensions) {
+                            setSliderDimensions($slider, dimensions);
+                        }
+                    },
+                    beforeChange: function() {},
+                    afterChange: function() {}
+                };
+
+                // Initialize the slider with the config
+                $(this).slick(sliderConfig);
+            } catch (error) {
+                console.error('Error initializing slider:', error);
+            }
+        });
+    }
+
+    // Initialize on window load to ensure all assets are loaded
+    $(window).on('load', function() {
+        if (!isSlickLoaded()) {
+            console.error('Slick Carousel is not loaded. Make sure the script is properly enqueued.');
+            return;
+        }
+        
+        console.log('Initializing sliders...');
+        initializeSliders();
+        
+        // Handle window resize events with debounce
+        let resizeTimer;
+        $(window).on('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                $('.image-slider-gallery.slick-initialized').slick('resize');
+            }, 250);
+        });
+        
+        // Re-initialize after AJAX content loads (if needed)
+        $(document).on('ajaxComplete', function() {
+            console.log('AJAX complete, reinitializing sliders...');
+            setTimeout(initializeSliders, 100);
+        });
+    });
+    
+    // Make initializeSliders available globally for debugging
+    window.initializeSliders = initializeSliders;
+    
+})(jQuery);

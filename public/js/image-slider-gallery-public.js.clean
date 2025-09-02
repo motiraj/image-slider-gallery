@@ -1,0 +1,420 @@
+(function($) {
+    'use strict';
+
+    // Default slider configuration
+    const defaultConfig = {
+        slidesToShow: 1,
+        slidesToScroll: 1,
+        infinite: true,
+        speed: 500,
+        autoplay: false, // Will be overridden by sliderConfig
+        autoplaySpeed: 3000, // Will be overridden by sliderConfig
+        arrows: true,
+        dots: true,
+        fade: false,
+        cssEase: 'ease',
+        adaptiveHeight: true,
+        prevArrow: '<button type="button" class="slick-prev">Previous</button>',
+        nextArrow: '<button type="button" class="slick-next">Next</button>',
+        responsive: [
+            {
+                breakpoint: 768,
+                settings: {
+                    arrows: false,
+                    dots: true
+                }
+            }
+        ]
+    };
+
+    // Effect configurations
+    const effectConfigs = {
+        // Fade / Dissolve
+        'fade': {
+            fade: true,
+            speed: 1000,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)'
+        },
+        // Slide (Horizontal)
+        'slide': {
+            fade: false,
+            speed: 600,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)'
+        },
+        // Slide Vertical
+        'slide-vertical': {
+            fade: false,
+            vertical: true,
+            verticalSwiping: true,
+            speed: 600,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)'
+        },
+        // Zoom / Ken Burns
+        'zoom': {
+            fade: true,
+            speed: 1500,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            onInit: function(slick) {
+                $(slick.$slides).addClass('zoom-effect');
+            },
+            beforeChange: function(event, slick, currentSlide, nextSlide) {
+                $(slick.$slides).removeClass('zoom-active');
+                $(slick.$slides[nextSlide]).addClass('zoom-active');
+            },
+            afterChange: function(slick, currentSlide) {
+                $(slick.$slides).removeClass('zoom-active');
+                $(slick.$slides[currentSlide]).addClass('zoom-active');
+            }
+        },
+        // 3D Cube
+        'cube': {
+            slidesToShow: 1,
+            slidesToScroll: 1,
+            speed: 1000,
+            cssEase: 'cubic-bezier(0.23, 1, 0.32, 1)',
+            transform: 'translate3d(0, 0, 0)',
+            perspective: 1000,
+            onInit: function(slick) {
+                $(slick.$slider).addClass('cube-effect');
+            },
+            beforeChange: function() {},
+            afterChange: function() {}
+        },
+        // Flip / Card
+        'flip': {
+            speed: 800,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            onInit: function(slick) {
+                $(slick.$slider).addClass('flip-effect');
+            },
+            beforeChange: function(event, slick, currentSlide, nextSlide) {
+                $(slick.$slides).removeClass('flip-active');
+                $(slick.$slides[nextSlide]).addClass('flip-active');
+            }
+        },
+        // Coverflow
+        'coverflow': {
+            slidesToShow: 3,
+            centerMode: true,
+            centerPadding: '0',
+            speed: 600,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            arrows: true,
+            dots: true,
+            infinite: true,
+            focusOnSelect: true,
+            variableWidth: false,
+            edgeFriction: 0.2,
+            initialSlide: 1,
+            slidesToScroll: 1,
+            touchThreshold: 10,
+            swipeToSlide: true,
+            onInit: function(slick) {
+                const $slider = $(slick.$slider);
+                $slider.addClass('effect-coverflow');
+                
+                // Force hardware acceleration and 3D perspective
+                $slider.css({
+                    'perspective': '1200px',
+                    'transform-style': 'preserve-3d',
+                    'overflow': 'visible',
+                    '-webkit-transform-style': 'preserve-3d',
+                    '-webkit-backface-visibility': 'hidden',
+                    '-webkit-perspective': '1200px'
+                });
+                
+                // Initialize slides with 3D transforms
+                $(slick.$slides).each(function() {
+                    const $slide = $(this);
+                    $slide.css({
+                        'transform-style': 'preserve-3d',
+                        'backface-visibility': 'hidden',
+                        'transform-origin': 'center center',
+                        'transition': 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                        'position': 'relative',
+                        'box-shadow': '0 10px 25px rgba(0,0,0,0.2)',
+                        'z-index': 1,
+                        'outline': 'none'
+                    });
+                });
+                
+                // Set initial state
+                updateCoverflowSlides(slick);
+                
+                // Force reflow and redraw for better 3D rendering
+                setTimeout(() => {
+                    const $track = $slider.find('.slick-track');
+                    $track.css('transform', 'translate3d(0,0,0)');
+                    $track[0].offsetHeight; // Force reflow
+                    $slider.addClass('slick-initialized');
+                }, 50);
+            },
+            beforeChange: function(event, slick, currentSlide, nextSlide) {
+                // Reset all slides
+                $(slick.$slides).removeClass('slick-center');
+                
+                // Set new center slide
+                $(slick.$slides[nextSlide]).addClass('slick-center');
+                
+                // Update positions
+                updateCoverflowSlides(slick);
+            }
+        },
+        // Parallax
+        'parallax': {
+            speed: 1000,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            onInit: function(slick) {
+                $(slick.$slider).addClass('parallax-effect');
+            }
+        },
+        // Slice / Strip
+        'slice': {
+            speed: 1000,
+            cssEase: 'cubic-bezier(0.4, 0, 0.2, 1)',
+            onInit: function(slick) {
+                $(slick.$slider).addClass('slice-effect');
+            }
+        },
+        // Bounce / Elastic
+        'bounce': {
+            speed: 1000,
+            cssEase: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            onInit: function(slick) {
+                $(slick.$slider).addClass('bounce-effect');
+            },
+            beforeChange: function() {},
+            afterChange: function() {}
+        }
+    };
+
+    // Check if Slick is loaded
+    function isSlickLoaded() {
+        const isLoaded = typeof $.fn.slick !== 'undefined';
+        if (!isLoaded) {
+            console.error('Slick Carousel is not loaded. Make sure the script is properly enqueued.');
+        }
+        return isLoaded;
+    }
+    
+    // Calculate and set slider dimensions based on container width and aspect ratio
+    function setSliderDimensions($slider, dimensions) {
+        if (!$slider.length || !dimensions) return;
+        
+        const containerWidth = $slider.width();
+        let aspectRatio = dimensions.height / dimensions.width;
+        
+        // Adjust aspect ratio for mobile devices to be more portrait-friendly
+        if (window.innerWidth <= 768) {
+            aspectRatio = Math.min(aspectRatio * 0.85, 1.5);
+        }
+        
+        let newHeight = containerWidth * aspectRatio;
+        
+        // Apply viewport-based height constraints
+        const maxViewportHeight = window.innerHeight * 0.85;
+        newHeight = Math.min(newHeight, maxViewportHeight);
+        
+        // Ensure minimum and maximum heights
+        newHeight = Math.max(newHeight, 200);
+        newHeight = Math.min(newHeight, 1200);
+        
+        // Apply the calculated height with smooth transition
+        $slider.css({
+            'height': newHeight + 'px',
+            'transition': 'height 0.3s ease-in-out'
+        });
+        
+        // Update slide heights for consistency
+        $slider.find('.slick-slide').css('height', newHeight + 'px');
+        
+        return newHeight;
+    }
+
+    // Update coverflow slides positions
+    function updateCoverflowSlides(slick) {
+        if (!slick || !slick.$slides) return;
+        
+        const $slides = $(slick.$slides);
+        const currentSlide = slick.currentSlide || 0;
+        const totalSlides = $slides.length;
+        const maxRotation = 40; // degrees
+        const maxOffset = 120; // pixels
+        const scale = 0.9; // scale of side slides
+        
+        $slides.each(function(index) {
+            const $slide = $(this);
+            let distanceFromCenter = Math.abs(index - currentSlide);
+            const direction = index < currentSlide ? -1 : 1;
+            
+            // Handle infinite looping
+            if (slick.options.infinite) {
+                distanceFromCenter = Math.min(distanceFromCenter, totalSlides - distanceFromCenter);
+            }
+            
+            // Calculate rotation and position based on distance from center
+            let rotation = 0;
+            let offsetX = 0;
+            let offsetZ = 0;
+            let zIndex = 1;
+            let opacity = 0.6;
+            let slideScale = scale;
+            
+            if (index === currentSlide) {
+                // Center slide
+                rotation = 0;
+                offsetX = 0;
+                offsetZ = 20;
+                zIndex = 10;
+                opacity = 1;
+                slideScale = 1;
+            } else if (distanceFromCenter === 1) {
+                // Adjacent slides
+                rotation = maxRotation * direction * 0.7;
+                offsetX = maxOffset * direction * 0.8;
+                offsetZ = -Math.abs(offsetX) * 0.3;
+                zIndex = 5;
+                opacity = 0.8;
+                slideScale = 0.9;
+            } else if (distanceFromCenter === 2) {
+                // Next level out
+                rotation = maxRotation * direction * 0.9;
+                offsetX = maxOffset * direction * 1.2;
+                offsetZ = -Math.abs(offsetX) * 0.4;
+                zIndex = 3;
+                opacity = 0.5;
+                slideScale = 0.8;
+            } else {
+                // Far slides
+                rotation = maxRotation * direction;
+                offsetX = maxOffset * direction * 1.5;
+                offsetZ = -Math.abs(offsetX) * 0.5;
+                zIndex = 1;
+                opacity = 0.3;
+                slideScale = 0.7;
+            }
+            
+            // Apply transformations with 3D perspective
+            const transform = `translate3d(${offsetX}px, 0, ${offsetZ}px) rotateY(${rotation}deg) scale(${slideScale})`;
+            
+            $slide.css({
+                'transform': transform,
+                '-webkit-transform': transform, // Safari/WebKit
+                'z-index': zIndex,
+                'opacity': opacity,
+                'transform-style': 'preserve-3d',
+                '-webkit-transform-style': 'preserve-3d',
+                'transition': 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                'backface-visibility': 'hidden',
+                '-webkit-backface-visibility': 'hidden',
+                'will-change': 'transform, opacity',
+                'pointer-events': 'auto'
+            });
+            
+            // Update image styles
+            const $img = $slide.find('img');
+            if ($img.length) {
+                $img.css({
+                    'transform': 'translateZ(0)',
+                    '-webkit-transform': 'translateZ(0)',
+                    'backface-visibility': 'hidden',
+                    '-webkit-backface-visibility': 'hidden',
+                    'transform-style': 'preserve-3d',
+                    '-webkit-transform-style': 'preserve-3d',
+                    'box-shadow': index === currentSlide ? '0 15px 30px rgba(0,0,0,0.25)' : 'none'
+                });
+            }
+        });
+    }
+
+    // Initialize all sliders on the page
+    function initializeSliders() {
+        $('.image-slider-gallery').each(function() {
+            const $slider = $(this);
+            const sliderId = $slider.attr('id');
+            
+            // Skip if already initialized
+            if ($slider.hasClass('slick-initialized')) {
+                return;
+            }
+            
+            // Get slider settings from data attributes or use defaults
+            const settings = {
+                autoplay: $slider.data('autoplay') || false,
+                autoplaySpeed: parseInt($slider.data('autoplay-speed')) || 3000,
+                effect: $slider.data('effect') || 'fade',
+                arrows: $slider.data('arrows') !== undefined ? $slider.data('arrows') : true,
+                dots: $slider.data('dots') !== undefined ? $slider.data('dots') : true,
+                speed: parseInt($slider.data('speed')) || 500,
+                dimensions: {
+                    width: parseInt($slider.data('width')) || 0,
+                    height: parseInt($slider.data('height')) || 0
+                }
+            };
+            
+            // Get effect configuration
+            const effect = settings.effect;
+            if (!effect || !effectConfigs[effect]) {
+                console.warn('Effect not found or invalid:', effect);
+                return;
+            }
+            
+            const config = effectConfigs[effect];
+            
+            // Merge default config with effect-specific config
+            const sliderConfig = {
+                ...defaultConfig,
+                ...config,
+                autoplay: settings.autoplay,
+                autoplaySpeed: settings.autoplaySpeed,
+                arrows: settings.arrows,
+                dots: settings.dots,
+                speed: settings.speed
+            };
+            
+            // Initialize the slider
+            if (isSlickLoaded()) {
+                $slider.slick(sliderConfig);
+                
+                // Set initial dimensions if specified
+                if (settings.dimensions.width > 0 && settings.dimensions.height > 0) {
+                    setSliderDimensions($slider, settings.dimensions);
+                }
+                
+                // Handle window resize
+                $(window).on('resize', function() {
+                    if (settings.dimensions.width > 0 && settings.dimensions.height > 0) {
+                        setSliderDimensions($slider, settings.dimensions);
+                    }
+                });
+            }
+        });
+    }
+
+    // Initialize on document ready
+    $(document).ready(function() {
+        // Wait for all assets to load
+        $(window).on('load', function() {
+            // Check if Slick is loaded
+            if (!isSlickLoaded()) {
+                console.error('Slick Carousel is not loaded. Make sure the script is properly enqueued.');
+                return;
+            }
+            
+            // Initialize sliders
+            initializeSliders();
+            
+            // Re-initialize sliders after AJAX content load (for compatibility with page builders)
+            $(document).ajaxComplete(function() {
+                initializeSliders();
+            });
+        });
+    });
+    
+    // Make functions available globally if needed
+    window.imageSliderGallery = {
+        init: initializeSliders,
+        updateCoverflow: updateCoverflowSlides
+    };
+    
+})(jQuery);

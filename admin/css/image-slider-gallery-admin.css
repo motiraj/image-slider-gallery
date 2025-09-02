@@ -1,0 +1,216 @@
+.slider-images-container {
+    margin: 20px 0;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+}
+
+.slider-images-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 0 0 15px 0;
+    padding: 0;
+    list-style: none;
+    min-height: 100px;
+    background: #fff;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+    padding: 15px;
+}
+
+/* Empty state styles */
+.slider-images-list.is-empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 150px;
+    background: #f9f9f9;
+    border: 2px dashed #ddd;
+    position: relative;
+}
+
+.slider-images-list.is-empty:before {
+    content: 'No images added yet. Click "Add Images" to get started.';
+    color: #999;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+    max-width: 80%;
+    line-height: 1.5;
+}
+
+/* Hide the empty pseudo-element when there are items */
+.slider-images-list:not(.is-empty):before {
+    display: none;
+}
+
+/* Slider Size Options */
+.slider-size-row select {
+    min-width: 300px;
+    max-width: 100%;
+    margin-bottom: 15px;
+}
+
+.custom-dimensions-row {
+    margin-top: 15px;
+    padding: 15px;
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    max-width: 500px;
+}
+
+.custom-dimensions-row input[type="number"] {
+    width: 100px;
+    margin: 0 5px;
+}
+
+.custom-dimensions-row span {
+    font-weight: bold;
+    margin: 0 5px;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+    .custom-dimensions-row {
+        max-width: 100%;
+    }
+    
+    .custom-dimensions-row input[type="number"] {
+        width: 80px;
+    }
+}
+
+.image-preview {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+}
+
+.image-preview:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    z-index: 10;
+}
+
+.image-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.remove-image {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 22px;
+    height: 22px;
+    background: #dc3545;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 20px;
+    text-decoration: none;
+    font-weight: bold;
+    opacity: 0;
+    transition: all 0.2s ease;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    cursor: pointer;
+}
+
+.image-preview:hover .remove-image {
+    opacity: 1;
+}
+
+.remove-image:hover {
+    background: #c82333;
+    transform: scale(1.1);
+}
+
+.add-slider-image {
+    margin-top: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.add-slider-image:before {
+    content: '\f132';
+    font-family: dashicons;
+    font-size: 16px;
+    line-height: 1;
+}
+
+/* Sortable handle */
+.ui-sortable-handle {
+    cursor: move;
+}
+
+.ui-sortable-helper {
+    transform: rotate(2deg);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+    z-index: 1000 !important;
+}
+
+.ui-state-highlight {
+    background: #f0f0f0;
+    border: 2px dashed #999;
+    min-height: 120px;
+    min-width: 120px;
+    visibility: visible !important;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+    .slider-images-list {
+        justify-content: center;
+    }
+    
+    .image-preview {
+        width: 100px;
+        height: 100px;
+    }
+}
+
+/* Settings form */
+.form-table th {
+    width: 200px;
+}
+
+/* Shortcode usage section */
+.shortcode-usage {
+    margin-top: 40px;
+    padding: 20px;
+    background: #f9f9f9;
+    border-left: 4px solid #0073aa;
+}
+
+.shortcode-usage h3 {
+    margin-top: 0;
+}
+
+.shortcode-usage code {
+    background: #f0f0f0;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 14px;
+}
+
+.shortcode-usage ul {
+    margin: 10px 0 20px 20px;
+    list-style-type: disc;
+}
+
+.shortcode-usage li {
+    margin-bottom: 5px;
+}
