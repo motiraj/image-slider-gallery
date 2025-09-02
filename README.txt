@@ -1,5 +1,5 @@
 === Image Slider Gallery ===
-Contributors: yourname
+Contributors: Moti Raj Gautam
 Tags: slider, gallery, image slider, responsive, slick
 Requires at least: 5.0
 Tested up to: 6.0
@@ -63,7 +63,3 @@ Example: `[image_slider_gallery autoplay="true" interval="3000"]`
 = 1.0.0 =
 * Initial release
 
-== Upgrade Notice ==
-
-= 1.0.0 =
-Initial release of Image Slider Gallery.
